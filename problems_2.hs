@@ -91,20 +91,19 @@ sort_length = sortBy (comparing length)
 
 
 
-main =
-    print( duplicate [1,2,3,4,5,6] ) >>
-    print( replicate'' [1,2,3,4,5,6] 3) >>
-    print( drop_nth [1,2,3,4,5,6] 3) >>
-    print( split_list [1,2,3,4,5,6] 2) >>
-    print( extract_list [1,2,3,4,5,6] 2 4) >>
-    print( rotate_list [1,2,3,4,5,6] 4) >>
-    print( remove_kth [1,2,3,4,5,6] 4) >>
+main = do
+    print( duplicate [1,2,3,4,5,6] )
+    print( replicate'' [1,2,3,4,5,6] 3)
+    print( drop_nth [1,2,3,4,5,6] 3)
+    print( split_list [1,2,3,4,5,6] 2)
+    print( extract_list [1,2,3,4,5,6] 2 4)
+    print( rotate_list [1,2,3,4,5,6] 4)
+    print( remove_kth [1,2,3,4,5,6] 4)
 
-    print( insert_at 777 [1,2,3,4,5,6] 3 ) >>
-    print( make_range 3 7 ) >>
-    print( sort_length [[1,2], [4], [3,4,5], [3,2]] ) >>
+    print( insert_at 777 [1,2,3,4,5,6] 3 )
+    print( make_range 3 7 )
+    print( sort_length [[1,2], [4], [3,4,5], [3,2]] )
 
-    print( )
 
 
 

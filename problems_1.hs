@@ -126,31 +126,29 @@ encodeElement 1 y = Single y
 encodeElement n y = Multiple n y
 
 
-main =
-    print( head [1,2,3,4,5,6] ) >>
-    print( tail [1,2,3,4,5,6] ) >>
-    print( last [1,2,3,4,5,6] ) >>
-    print( init [1,2,3,4,5,6] ) >>
+main = do
+    print( head [1,2,3,4,5,6] )
+    print( tail [1,2,3,4,5,6] )
+    print( last [1,2,3,4,5,6] )
+    print( init [1,2,3,4,5,6] )
 
-    print( kth_elem [1,2,3,4,5,6] 3 ) >>
-    print( [1,2,3,4,5,6] !! 3 ) >> -- infix
+    print( kth_elem [1,2,3,4,5,6] 3 )
+    print( [1,2,3,4,5,6] !! 3 ) -- infix
 
-    print( take 2 [1,2,3,4,5,6] ) >>
-    print( drop 2 [1,2,3,4,5,6] ) >>
-    print( num_elems [1,2,3,4,5,6] ) >>
-    print( reverse_elems [1,2,3,4,5,6] ) >>
+    print( take 2 [1,2,3,4,5,6] )
+    print( drop 2 [1,2,3,4,5,6] )
+    print( num_elems [1,2,3,4,5,6] )
+    print( reverse_elems [1,2,3,4,5,6] )
 
-    print( is_palindrom [1,2,3,2,1] ) >>
-    print( num_elems [1,2,3,4,5,6] ) >>
-    print( flatten_list (List [Elem 1,List [Elem 2,List [Elem 3]],Elem 4,List [Elem 5,Elem 6]])) >>
-    print( del_consec_dupes [1,1,1,2,5,5,8] ) >>
-    print( pack_consec_dupes [1,1,1,2,5,5,8] ) >>
-    print( encode_list [1,1,1,2,5,5,8] ) >>
-    print( new_encode_list [1,1,1,2,5,5,8] ) >>
-    print( decode_list [Multiple 4 'a',Single 'b',Multiple 2 'c', Multiple 2 'a',Single 'd',Multiple 4 'e']) >>
-    print( direct_encode_list [1,1,1,2,5,5,8] ) >>
-    print(  ) >>
-    print(  )
+    print( is_palindrom [1,2,3,2,1] )
+    print( num_elems [1,2,3,4,5,6] )
+    print( flatten_list (List [Elem 1,List [Elem 2,List [Elem 3]],Elem 4,List [Elem 5,Elem 6]]))
+    print( del_consec_dupes [1,1,1,2,5,5,8] )
+    print( pack_consec_dupes [1,1,1,2,5,5,8] )
+    print( encode_list [1,1,1,2,5,5,8] )
+    print( new_encode_list [1,1,1,2,5,5,8] )
+    print( decode_list [Multiple 4 'a',Single 'b',Multiple 2 'c', Multiple 2 'a',Single 'd',Multiple 4 'e'])
+    print( direct_encode_list [1,1,1,2,5,5,8] )
 
 
 
