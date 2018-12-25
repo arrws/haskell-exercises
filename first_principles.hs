@@ -1,6 +1,5 @@
 module Main where
 
-
 import Data.Char
 import Data.Time
 
@@ -27,7 +26,6 @@ vigenere w = zipWith (shift (+) . encode) (concat $ repeat w)
 
 unVigenere :: String -> String -> String
 unVigenere w = zipWith (shift (-) . encode) (concat $ repeat w)
-
 
 
 
@@ -106,6 +104,7 @@ foldTree f b (Node left a right) =
   foldTree f (foldTree f (f a b) left) right -- preorder
   -- foldTree f (f a (foldTree f b left)) right    -- inorder
   -- f a (foldTree f (foldTree f b left) right) -- postorder
+
 
 
 is_subseq :: Eq a => [a] -> [a] -> Bool

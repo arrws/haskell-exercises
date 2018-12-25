@@ -97,13 +97,13 @@ pretty_print t  = go t 0
     go (Node x l r) h         = tab h ++ "Node " ++ show x ++ " (\n" ++ go l (h+1) ++ go r (h+1) ++ tab (h+1) ++ ")\n"
 
 
-treeToString :: Tree Char -> String
-treeToString Empty                  = ""
-treeToString (Node x Empty Empty) = [x]
-treeToString (Node x l r)         = x : '(' : treeToString l ++ "," ++ treeToString r ++ ")"
+tree_to_string :: Tree Char -> String
+tree_to_string Empty                  = ""
+tree_to_string (Node x Empty Empty) = [x]
+tree_to_string (Node x l r)         = x : '(' : tree_to_string l ++ "," ++ tree_to_string r ++ ")"
 
-stringToTree :: String -> Tree Char
-stringToTree s = tree
+string_to_tree :: String -> Tree Char
+string_to_tree s = tree
     where
     (_, tree) = go s
     go s@(x:xs) | x == ',' || x == ')' = (s, Empty)
@@ -112,35 +112,6 @@ stringToTree s = tree
                                        where
                                        (',':xs', l)  = go xs
                                        (')':xs'', r) = go xs'
-
-
-
-data MTree a = MNode a [MTree a]
-    deriving (Eq, Show)
-
-stringToMTree :: String -> MTree Char
-stringToMTree (x:xs) = MNode x tree
-    where
-    (tree, _) = go xs
-    go (x:xs) | x == '^'  = ([], xs)
-              | otherwise = ([MNode x next_node] ++ next_next_node, rest_final)
-                          where
-                          (next_node, rest) = go xs
-                          (next_next_node, rest_final) = go rest
-
-sum_paths :: MTree Char -> Int
-sum_paths t = go 0 t
-            where
-            go p (MNode x t)  = p + foldl (\x y -> x + go (p+1) y) 0 t
-            -- go p (Node x t)  = p + sum (map (go (p+1)) t)
-
-bottom_up :: MTree Char -> String
-bottom_up (MNode x t) = foldl (\x y -> x ++ (bottom_up y) ) "" t ++ [x]
-
-lisp_print :: MTree Char -> String
-lisp_print (MNode x []) = " " ++ [x]
-lisp_print (MNode x t) = " (" ++ [x] ++ foldl (\x y -> x ++ (lisp_print y) ) "" t ++ ")"
-
 
 
 main = do
@@ -161,12 +132,6 @@ main = do
     print( build_complete_tree 4 )
     putStrLn( pretty_print (Node 0 test_tree test_tree) )
     let str_tree = "x(y,a(,b))"
-    print( stringToTree str_tree )
-    print( treeToString (stringToTree str_tree) == str_tree )
-    let multi_tree = stringToMTree "afg^^c^bd^e^^^"
-    print( multi_tree )
-    print( sum_paths multi_tree )
-    print( bottom_up multi_tree )
-    print( lisp_print multi_tree )
-
+    print( string_to_tree str_tree )
+    print( tree_to_string (string_to_tree str_tree) == str_tree )
 
