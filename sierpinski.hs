@@ -2,7 +2,7 @@ import Control.Concurrent
 main = do
   loop 5 base
 
-base = [[if r+c >= 33 && c-r <= 31 then '1' else '_' | c <- [1..63]] | r <- [1..32]]
+base = [[if r+c >= 33 && c-r <= 31 then 'Δ' else '_' | c <- [1..63]] | r <- [1..32]]
 
 dropEven s = map fst $ filter snd $ zip s $ cycle [False, True]
 
