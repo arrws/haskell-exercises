@@ -119,6 +119,3 @@ main = do
     print (is_subseq "var" "radyaru")
 
 
-
-
-
