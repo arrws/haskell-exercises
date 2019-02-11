@@ -4,52 +4,53 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State (StateT)
 
--- type Stack = [Int]
--- type State s = StateT s Identity
-
 -- newtype State s a = State { runState :: s -> (a,s)  }
-
--- instance Monad (State s) where
---     return x = State $ \s -> (x,s)
---     (State h) >>= f = State $ \s -> let (a, newState) = h s
---                                         (State g) = f a
---                                     in g newState
-
--- pop :: State Stack Int
--- pop = State $ \(x:xs) -> (x,xs)
-
--- push :: Int -> State Stack ()
--- push a = State $ \xs -> ((),a:xs)
-
--- stackManip :: State Stack Int
--- stackManip = do
-            -- push 3
-            -- pop
-            -- pop
-
--- stackStuff :: State Stack ()
--- stackStuff = do
---             a <- pop
---             if a == 5
---             then push 5
---             else do
---                 push 3
---                 push 8
--- moreStack = do
---             a <- stackManip
---             if a == 100
---             then stackStuff
---             else return ()
-
--- get = State $ \s -> (s,s)
--- put newState = State $ \s -> ((),newState)
+type Stack = [Int]
+type State s = StateT s Identity
 
 
+instance Monad (State s) where
+    return x = State $ \s -> (x,s)
+    (State h) >>= f = State $ \s -> let (a, newState) = h s
+                                        (State g) = f a
+                                    in g newState
 
--- newtype Writer w a = Writer { runWriter :: (a, w)  }
--- instance (Monoid w) => Monad (Writer w) where
---     return x = Writer (x, mempty)
---     (Writer (x,v)) >>= f = let (Writer (y, v')) = f x in Writer (y, v `mappend` v')
+pop :: State Stack Int
+pop = State $ \(x:xs) -> (x,xs)
+
+push :: Int -> State Stack ()
+push a = State $ \xs -> ((),a:xs)
+
+stackManip :: State Stack Int
+stackManip = do
+            push 3
+            pop
+            pop
+
+stackStuff :: State Stack ()
+stackStuff = do
+            a <- pop
+            if a == 5
+            then push 5
+            else do
+                push 3
+                push 8
+
+moreStack :: State Stack ()
+moreStack = do
+            a <- stackManip
+            if a == 100
+            then stackStuff
+            else return ()
+
+get = State $ \s -> (s,s)
+put newState = State $ \s -> ((),newState)
+
+
+newtype Writer w a = Writer { runWriter :: (a, w)  }
+instance (Monoid w) => Monad (Writer w) where
+    return x = Writer (x, mempty)
+    (Writer (x,v)) >>= f = let (Writer (y, v')) = f x in Writer (y, v `mappend` v')
 
 gcd' :: Int -> Int -> Writer [String] Int
 gcd' a b
@@ -110,8 +111,6 @@ main = do
     mapM_ putStrLn $ snd $ runWriter (gcdReverse 8 3)
     mapM_ putStrLn . fromDiffList . snd . runWriter $ gcdDiffList 110 34
     print $ addStuff 3
-    -- print $ runState stackManip [5,8,2,1]
-    -- print $ runState stackStuff [9,0,2,1,0]
-
-
+    print $ runState stackManip [5,8,2,1]
+    print $ runState stackStuff [9,0,2,1,0]
 
