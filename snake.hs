@@ -1,7 +1,6 @@
 import System.IO
 import System.Console.ANSI
 import Control.Monad
-
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async
 import Pipes
@@ -13,10 +12,7 @@ import Data.Monoid ((<>))
 data Direction = J|K|H|L
     deriving (Eq, Show)
 
-data State = Quited | Paused | Running | Lost
-    deriving (Eq, Show)
-
-data Command = Quit | Pause | Go Direction
+data Command = Quit | Pause | Go Direction | Lost
     deriving (Eq, Show)
 
 data Environment = Environment { snake :: Snake
@@ -25,11 +21,9 @@ data Environment = Environment { snake :: Snake
                                , food :: Position
                                , rand :: R.StdGen
                                , limit :: Int
-                               , state :: State
-                               , delete :: Maybe Position
-                               , create :: Maybe Position
+                               , delete_cell :: Maybe Position
+                               , create_cell :: Maybe Position
                                } deriving (Show)
-
 
 type Position =  (Int, Int)
 
@@ -41,14 +35,6 @@ opposite x = case x of
                 L -> H
                 J -> K
                 K -> J
-
-nextPosition :: Direction -> Position -> Int -> Position
-nextPosition dir (x,y) lim = (mod new_x lim, mod new_y lim)
-                            where (new_x, new_y) = case dir of
-                                                J -> (x+1, y)
-                                                K -> (x-1, y)
-                                                L -> (x, y+1)
-                                                H -> (x, y-1)
 
 randomPosition :: Environment -> (Position, R.StdGen)
 randomPosition env = head $ dropWhile invalid (positions (rand env))
@@ -62,37 +48,38 @@ randomPosition env = head $ dropWhile invalid (positions (rand env))
                             in ((x, y), g2)
 
 advance :: Environment -> Command -> Environment
-advance env Quit        = env { state = Quited }
-advance env Pause       = env { state = Paused }
-advance env (Go dir)    = do
-                        let p = nextPosition dir (head $ snake env) (limit env)
-                        if p /= (snake env) !! 1
-                        then check $ p
-                        else check $ nextPosition (opposite dir) (head $ snake env) (limit env)
-                        where
-                            check p
-                                | p == (food env)     = let (new_food, new_rand) = randomPosition env in
-                                                        env { direction = Go dir
-                                                            , snake = p : (snake env)
-                                                            , score = 1 + (score env)
-                                                            , food = new_food
-                                                            , rand = new_rand
-                                                            , state = Running
-                                                            , delete = Nothing
-                                                            , create = Just $ p
-                                                            }
-                                | elem p (snake env)  = env { direction = Go dir
-                                                            , state = Lost
-                                                            , delete = Just $ last (snake env)
-                                                            , create = Just $ p
-                                                            }
-                                | otherwise           = env { direction = Go dir
-                                                            , snake = p : init (snake env)
-                                                            , state = Running
-                                                            , delete = Just $ last (snake env)
-                                                            , create = Just $ p
-                                                            }
+advance env Quit        = env { direction = Quit }
+advance env Pause       = env { direction = Pause }
+advance env (Go dir)
+    | p == (food env)   = let (new_food, new_rand) = randomPosition e in
+                          e { score = 1 + (score e)
+                            , food = new_food
+                            , rand = new_rand
+                            , delete_cell = Nothing
+                            }
+    | elem p (snake env)= e { direction = Lost }
+    | otherwise         = e { snake = init (snake e) }
+    where
+        p = nextPosition env dir
+        e = env { direction = Go dir
+                , snake = p : (snake env)
+                , delete_cell = Just $ last (snake env)
+                , create_cell = Just $ p
+                }
 
+nextPosition :: Environment -> Direction -> Position
+nextPosition env dir =  let p = forward dir (head $ snake env) (limit env) in
+                        if p /= (snake env) !! 1
+                        then p
+                        else forward (opposite dir) (head $ snake env) (limit env)
+
+forward :: Direction -> Position -> Int -> Position
+forward dir (x,y) lim = (mod new_x lim, mod new_y lim)
+                            where (new_x, new_y) = case dir of
+                                                J -> (x+1, y)
+                                                K -> (x-1, y)
+                                                L -> (x, y+1)
+                                                H -> (x, y-1)
 
 parseInput :: Char -> Maybe Command
 parseInput c = case c of
@@ -123,42 +110,47 @@ getInput = getit >-> loopit
                                 yield next
                                 loop next
 
-
 delay :: Int -> Pipe b b IO ()
 delay t = forever $ do
         lift $ threadDelay (t * 100000)
         await >>= yield
 
 updateGame :: (Environment) -> IO()
-updateGame env
-    | state env == Quited = do
-                            let l = div (limit env) 2
-                            clearScreen
-                            setCursorPosition l (l-5)
-                            putStrLn $ "You quit!"
-                            setCursorPosition (limit env) 0
+updateGame env = case direction env of
+    Quit    -> do
+                let l = div (limit env) 2
+                clearScreen
+                setCursorPosition l (l-5)
+                putStrLn $ "You quit!"
+                setCursorPosition (limit env) 0
 
-    | state env == Paused = return()
+    Lost    -> do
+                let l = div (limit env) 2
+                clearScreen
+                setCursorPosition l (l-5)
+                putStrLn $ "You died!"
+                setCursorPosition (l+1) (l-5)
+                putStrLn $ "Score: " ++ show (score env)
+                setCursorPosition (limit env) 0
 
-    | state env == Running  = do
-                            mapM_ (draw ' ') (delete env)
-                            mapM_ (draw '@') (create env)
-                            draw 'X' (food env)
-                            setCursorPosition (limit env) 0
+    Pause   -> return()
 
-    | state env == Lost     = do
-                            let l = div (limit env) 2
-                            clearScreen
-                            setCursorPosition l (l-5)
-                            putStrLn $ "You died!"
-                            setCursorPosition (l+1) (l-5)
-                            putStrLn $ "Score: " ++ show (score env)
-                            setCursorPosition (limit env) 0
+    _       -> do
+                mapM_ (draw ' ') (delete_cell env)
+                mapM_ (draw '@') (create_cell env)
+                draw 'X' (food env)
+                setCursorPosition (limit env) 0
 
 draw :: Char -> Position -> IO ()
 draw c (x, y) = setCursorPosition x (2*y) >> putChar c >> setCursorPosition x (2*y+1) >> putChar ' '
 
-playGame game = P.scan advance game id >-> P.takeWhile (\x -> elem (state x) [Running, Paused])
+playGame game = P.scan advance game id >-> takeUntilAfter (\x -> not $ elem (direction x) [Quit, Lost])
+                where
+                    takeUntilAfter :: Monad m => (a -> Bool) -> Pipe a a m ()
+                    takeUntilAfter cond = do
+                        v <- await
+                        yield v
+                        if cond v then takeUntilAfter cond else return ()
 
 initEnv = Environment { snake = [(5, x)| x <- [2..17]]
                       , score = 0
@@ -166,9 +158,8 @@ initEnv = Environment { snake = [(5, x)| x <- [2..17]]
                       , food = (6, 6)
                       , rand = R.mkStdGen 0
                       , limit = 20
-                      , state = Running
-                      , delete = Nothing
-                      , create = Nothing
+                      , delete_cell = Nothing
+                      , create_cell = Nothing
                       }
 
 initGame env = do
@@ -176,17 +167,14 @@ initGame env = do
     hSetBuffering stdout NoBuffering
     hSetEcho stdin False
     clearScreen
-
     let l = limit env
     mapM_ (draw '*') [(0, x) | x <- [0..l+1]]
     mapM_ (draw '*') [(l+1, x) | x <- [0..l+1]]
     mapM_ (draw '*') [(x, 0) | x <- [0..l+1]]
     mapM_ (draw '*') [(x, l+1) | x <- [0..l+1]]
 
-
 main = do
         initGame initEnv
-
         let
             run p = async $ runEffect p >> performGC
             from  = fromInput
