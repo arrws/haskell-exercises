@@ -26,6 +26,8 @@ data Environment = Environment { snake :: Snake
                                , rand :: R.StdGen
                                , limit :: Int
                                , state :: State
+                               , delete :: Maybe Position
+                               , create :: Maybe Position
                                } deriving (Show)
 
 
@@ -76,13 +78,19 @@ advance env (Go dir)    = do
                                                             , food = new_food
                                                             , rand = new_rand
                                                             , state = Running
+                                                            , delete = Nothing
+                                                            , create = Just $ p
                                                             }
                                 | elem p (snake env)  = env { direction = Go dir
                                                             , state = Lost
+                                                            , delete = Just $ last (snake env)
+                                                            , create = Just $ p
                                                             }
                                 | otherwise           = env { direction = Go dir
                                                             , snake = p : init (snake env)
                                                             , state = Running
+                                                            , delete = Just $ last (snake env)
+                                                            , create = Just $ p
                                                             }
 
 
@@ -115,22 +123,14 @@ getInput = getit >-> loopit
                                 yield next
                                 loop next
 
-                -- check (Go x) (Go y) = x == opposite y
-                -- check _ _ = False
-                -- loop prev = do
-                    -- next <- await
-                    -- if check next prev
-                    -- then loop prev
-                    -- else yield next >> loop next
-
 
 delay :: Int -> Pipe b b IO ()
 delay t = forever $ do
         lift $ threadDelay (t * 100000)
         await >>= yield
 
-updateGame :: (Environment, Environment) -> IO()
-updateGame (prev_env, env)
+updateGame :: (Environment) -> IO()
+updateGame env
     | state env == Quited = do
                             let l = div (limit env) 2
                             clearScreen
@@ -141,8 +141,8 @@ updateGame (prev_env, env)
     | state env == Paused = return()
 
     | state env == Running  = do
-                            mapM_ (draw ' ') (reverse $ snake prev_env)
-                            mapM_ (draw '@') (reverse $ snake env)
+                            mapM_ (draw ' ') (delete env)
+                            mapM_ (draw '@') (create env)
                             draw 'X' (food env)
                             setCursorPosition (limit env) 0
 
@@ -156,18 +156,9 @@ updateGame (prev_env, env)
                             setCursorPosition (limit env) 0
 
 draw :: Char -> Position -> IO ()
-draw c (x, y) = setCursorPosition x y >> putChar c
+draw c (x, y) = setCursorPosition x (2*y) >> putChar c >> setCursorPosition x (2*y+1) >> putChar ' '
 
-playGame game =
-                P.scan advance game id
-                >-> keepPrev -- give last 2 Evironments
-                >-> P.takeWhile (\(x,y) -> elem (state x) [Running, Paused])
-                where
-                    keepPrev = do
-                        first <- await
-                        P.scan remember (first, first) id
-                        where
-                        remember (_, a) b = (a, b)
+playGame game = P.scan advance game id >-> P.takeWhile (\x -> elem (state x) [Running, Paused])
 
 initEnv = Environment { snake = [(5, x)| x <- [2..17]]
                       , score = 0
@@ -176,6 +167,8 @@ initEnv = Environment { snake = [(5, x)| x <- [2..17]]
                       , rand = R.mkStdGen 0
                       , limit = 20
                       , state = Running
+                      , delete = Nothing
+                      , create = Nothing
                       }
 
 initGame env = do
@@ -190,6 +183,7 @@ initGame env = do
     mapM_ (draw '*') [(x, 0) | x <- [0..l+1]]
     mapM_ (draw '*') [(x, l+1) | x <- [0..l+1]]
 
+
 main = do
         initGame initEnv
 
@@ -198,14 +192,15 @@ main = do
             from  = fromInput
             to    = toOutput
 
-        (mO, mI) <- spawn unbounded
-        (dO, dI) <- spawn $ latest $ direction initEnv
+        (m_writer, m_reader) <- spawn unbounded
+        (d_writer, d_reader) <- spawn $ latest $ direction initEnv
 
-        inputTask   <- run $ getInput >-> to (mO <> dO)
-        delayedTask <- run $ from dI >-> delay 3 >-> to mO
+        inputTask   <- run $ getInput >-> to (m_writer <> d_writer)
+        -- inputTask   <- run $ getInput >-> to d_writer
+        delayedTask <- run $ from d_reader >-> delay 1 >-> to m_writer
         drawingTask <- run $ for
-                                (from mI >-> playGame initEnv)   -- producer
-                                (lift . updateGame)              -- effect
+                                (from m_reader >-> playGame initEnv)
+                                (lift . updateGame)
 
         waitAny [inputTask , drawingTask]
 
