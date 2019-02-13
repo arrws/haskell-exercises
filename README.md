@@ -1,1 +1,1 @@
-Haskell exercises :-3
+fun.
