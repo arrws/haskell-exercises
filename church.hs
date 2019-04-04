@@ -1,5 +1,5 @@
 -- identitiy id
-idiot :: a -> a 
+idiot :: a -> a
 idiot = id
 
 -- self application
