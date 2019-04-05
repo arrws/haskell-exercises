@@ -100,9 +100,5 @@ main = do
     print $ seqm [Just 3, Just 4]
     print $ seqm [Just 3, Just 4, Nothing, Just 8]
     print $ seqm [[1,2,3],[10,20,30]]
-    print $ filterM (const [True, False]) [1, 2, 3]
-    print $ map ($3) [odd, even]
-    print $ sequence [odd, even] 3
-    print $ liftM2 (&&) odd even 3
-    print $ liftM2 (+) (Just 3) (Just 1)
+
 
