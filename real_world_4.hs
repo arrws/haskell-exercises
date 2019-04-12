@@ -1,3 +1,4 @@
+import Control.Monad
 import Control.Concurrent
 import Control.Exception
 import qualified Data.Map as M
@@ -12,6 +13,15 @@ data ThreadStatus = Running
                   deriving (Eq, Show)
 
 
+twitch :: ThreadStatus -> ThreadStatus -> ThreadStatus
+twitch Running _ = Running
+twitch _ Running = Running
+twitch _ _ = Finished
+
+twitchM :: ThreadStatus -> Maybe ThreadStatus -> Maybe ThreadStatus
+twitchM x y = fmap (twitch x) y
+
+
 newtype ThreadManager =
     Mgr (MVar (M.Map ThreadId (MVar ThreadStatus)))
     deriving (Eq)
@@ -19,6 +29,7 @@ newtype ThreadManager =
 
 newManager :: IO ThreadManager
 newManager = Mgr `fmap` newMVar M.empty
+
 
 forkManaged :: ThreadManager -> IO () -> IO ThreadId
 forkManaged (Mgr mgr) body =
@@ -29,6 +40,7 @@ forkManaged (Mgr mgr) body =
             putMVar state (either Threw (const Finished) result)
         return (M.insert tid state m, tid)
 
+
 getStatus :: ThreadManager -> ThreadId -> IO (Maybe ThreadStatus)
 getStatus (Mgr mgr) tid =
     modifyMVar mgr $ \m ->
@@ -37,6 +49,7 @@ getStatus (Mgr mgr) tid =
         Just st -> tryTakeMVar st >>= \mst -> case mst of
             Nothing -> return (m, Just Running)
             Just sth -> return (M.delete tid m, Just sth)
+
 
 waitFor :: ThreadManager -> ThreadId -> IO (Maybe ThreadStatus)
 waitFor (Mgr mgr) tid = do
@@ -48,22 +61,57 @@ waitFor (Mgr mgr) tid = do
         Nothing -> return Nothing
         Just st -> Just `fmap` takeMVar st
 
+waitFor' :: ThreadManager -> ThreadId -> IO (Maybe ThreadStatus)
+waitFor' (Mgr mgr) tid =
+    join . modifyMVar mgr $ \m ->
+        return $ case M.updateLookupWithKey (\_ _ -> Nothing) tid m of
+            (Nothing, _) -> (m, return Nothing)
+            (Just st, m') -> (m', Just `fmap` takeMVar st)
+
+
 waitAll :: ThreadManager -> IO ()
 waitAll (Mgr mgr) = modifyMVar mgr elems >>= mapM_ takeMVar
     where elems m = return (M.empty, M.elems m)
 
 
-fun = do
-        let compute = (+) <$> [0..9] <*> [0..999]
-        print $ show $ compute !! 5319
 
-main = do
+funks n = do
+        let compute = (*) <$> [0..999] <*> [0..999]
+        threadDelay 10000
+        print $ show $ compute !! (353*n)
+
+fun = funks 5
+
+
+run_one =  do
         m <- newManager
         id <- forkManaged m fun
         status <- getStatus m id
         case status of
           Nothing -> print "FAIL"
           Just st -> print "ok"
-        return ()
+        waitAll m
 
+main = do
+        -- run_one
+        mans <- replicateM 8 newManager
+        let fns = fmap funks [3..]
+
+        -- ids <- forM mans (flip forkManaged fun)
+        ids <- zipWithM forkManaged mans fns
+
+        -- zipWithM getStatus mans ids >>= (\stats -> print $ foldM (\_ x -> x) Finished stats)
+        let global_status = zipWithM getStatus mans ids >>= (\stats -> print $ foldM twitchM Finished stats)
+        global_status
+
+        print ids
+        -- stats <- zipWithM getStatus mans ids
+        -- print stats
+        -- print $ sequence stats
+        -- print $ foldM (\_ x -> x) Finished stats
+
+        global_status
+        waitAll $ head mans
+        global_status
+        return ()
 
